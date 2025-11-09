@@ -4,18 +4,19 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router'; // For navigation
 import { useEffect, useRef, useState } from 'react';
 import {
-    FlatList,
-    Keyboard,
-    Modal,
-    Share,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  FlatList,
+  Keyboard,
+  Modal,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 // 🔐 Your Ola Maps API Key
+const BASE_URL = "http://192.168.71.213:5000";
 const OLA_API_KEY = 'CornDpxoVHMISlbCN8ePrPdauyrHDeIBZotfvRdy';
 
 // Helper function to format duration (in seconds) to a friendly string.
@@ -297,7 +298,7 @@ const LocationInputScreen = () => {
   }
 
   try {
-    const response = await fetch('http://192.168.149.213:5000/api/info', {
+    const response = await fetch(`${BASE_URL}/api/info`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -708,7 +709,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   modalCloseButtonText: {
-    color: '#fff',
+    color: 'black',
     fontFamily: 'Poppins',
     fontSize: 14,
   },
@@ -775,7 +776,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   shareButton: {
-    backgroundColor: '#1E90FF',
+    backgroundColor: 'black',
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 10,
@@ -788,7 +789,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   startRideButton: {
-    backgroundColor: 'green',
+    backgroundColor: 'black',
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 10,

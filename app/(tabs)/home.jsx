@@ -2,29 +2,80 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-    Modal,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert, // Import Alert for pop-up messages
+  Modal,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-
+const BASE_URL = "http://192.168.71.213:5000";
 export default function Home() {
   const { userName: paramName } = useLocalSearchParams();
   const [userName, setUserName] = useState(paramName || "");
   const [isCurrentRideModalVisible, setIsCurrentRideModalVisible] = useState(false);
+  const [hasActiveRide, setHasActiveRide] = useState(false); // State to track if user has an active ride
 
-  // If no param, load from AsyncStorage
-  useEffect(() => {
-    if (!paramName) {
-      AsyncStorage.getItem("userName")
-        .then(stored => stored && setUserName(stored))
-        .catch(console.error);
+  // Function to check rider's active ride status from backend
+  const checkRiderStatus = useCallback(async () => {
+    if (!userName) {
+      setHasActiveRide(false); // No username, so no active ride
+      return;
     }
-  }, []);
+    try {
+      // Fetch ride data for the current user from your Flask backend
+      // This endpoint should return the rider's details, including 'ride_code'
+      const response = await fetch(`${BASE_URL}/api/trips/${userName}`);
+      const data = await response.json();
+
+      // Check if the response was successful and if a ride_code exists
+      if (response.ok && data.ride_code) {
+        setHasActiveRide(true);
+      } else {
+        setHasActiveRide(false);
+      }
+    } catch (error) {
+      console.error("Error checking rider status:", error);
+      setHasActiveRide(false); // Assume no active ride on network/API error
+    }
+  }, [userName]); // Re-run this function if userName changes
+
+  // Effect hook to load userName from AsyncStorage and then check ride status
+  useEffect(() => {
+    const loadUserNameAndCheckStatus = async () => {
+      let currentUserName = paramName;
+      if (!currentUserName) {
+        const storedUserName = await AsyncStorage.getItem("user_name");
+        if (storedUserName) {
+          currentUserName = storedUserName;
+          setUserName(storedUserName);
+        }
+      }
+      // Only check ride status if a userName is available
+      if (currentUserName) {
+        checkRiderStatus();
+      }
+    };
+
+    loadUserNameAndCheckStatus();
+  }, [paramName, checkRiderStatus]); // Dependencies: paramName and the memoized checkRiderStatus
+
+  const handleCreateRide = () => router.push("/create_ride");
+  const handleJoinRide = () => router.push("/join_ride");
+
+  // Logic for "Current Ride" button press
+  const handleCurrentRide = () => {
+    if (hasActiveRide) {
+      // If user has an active ride, show the modal
+      setIsCurrentRideModalVisible(true);
+    } else {
+      // If no active ride, show an alert
+      Alert.alert('No Active Ride', 'You are not currently in any ride.');
+    }
+  };
 
   const clearAll = async () => {
   try {
@@ -34,20 +85,72 @@ export default function Home() {
     console.error('Failed to clear AsyncStorage', e);
   }
 };
-
-  const handleCreateRide = () => router.push("/create_ride");
-  const handleJoinRide   = () => router.push("/join_ride");
-  const handleCurrentRide= () => setIsCurrentRideModalVisible(true);
   const handleCloseModal = () => setIsCurrentRideModalVisible(false);
-  const handleResumeRide = () => { router.push("/resume_ride"); setIsCurrentRideModalVisible(false); };
-  const handleFinishRide = () => { router.push("/finish_ride"); setIsCurrentRideModalVisible(false); };
-  
-  const clearEverything = async () => {
+   const handleResumeRide = async () => {
     try {
-      await AsyncStorage.clear();
-      Alert.alert('Success', 'All storage cleared');
-    } catch (e) {
-      Alert.alert('Error', 'Could not clear storage');
+      const storedUserName = await AsyncStorage.getItem('user_name');
+      if (!storedUserName) {
+        Alert.alert("Error", "User name not found. Cannot finish ride.");
+        return;
+      }
+      const response = await fetch(`${BASE_URL}/api/update-ride-status/${storedUserName}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: "active", // Indicate that the ride is finished
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Error finishing ride:", errorData);
+        Alert.alert("Error", `Failed to finish ride: ${errorData.message || response.statusText}`);
+        return;
+      }
+      router.push("/travel"); // Navigate back to home
+      setIsCurrentRideModalVisible(false); // Close the modal
+      checkRiderStatus(); // Re-check status to update the "Current Ride" button's state
+
+    } catch (error) {
+      console.error("Network error or issue during finish ride:", error);
+      Alert.alert("Error", "An error occurred while finishing the ride. Please try again.");
+    }
+  };
+
+  // Function to handle finishing a ride
+  // This will send a POST request to your backend to set status to 'done' and clear ride data
+  const handleFinishRide = async () => {
+    try {
+      const storedUserName = await AsyncStorage.getItem('user_name');
+      if (!storedUserName) {
+        Alert.alert("Error", "User name not found. Cannot finish ride.");
+        return;
+      }
+      const response = await fetch(`${BASE_URL}/api/update-ride-status/${storedUserName}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: "done", // Indicate that the ride is finished
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Error finishing ride:", errorData);
+        Alert.alert("Error", `Failed to finish ride: ${errorData.message || response.statusText}`);
+        return;
+      }
+      router.push("/home"); // Navigate back to home
+      setIsCurrentRideModalVisible(false); // Close the modal
+      checkRiderStatus(); // Re-check status to update the "Current Ride" button's state
+
+    } catch (error) {
+      console.error("Network error or issue during finish ride:", error);
+      Alert.alert("Error", "An error occurred while finishing the ride. Please try again.");
     }
   };
 
@@ -68,7 +171,15 @@ export default function Home() {
           <Text style={styles.buttonText}>Join Ride</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.button} onPress={clearAll}>
+        {/* "Current Ride" button: conditionally styled and disabled */}
+        <TouchableOpacity
+          style={[
+            styles.button,
+            !hasActiveRide && styles.disabledButton // Apply grey style if no active ride
+          ]}
+          onPress={handleCurrentRide}
+          disabled={!hasActiveRide} // Disable button if no active ride
+        >
           <Text style={styles.buttonText}>Current Ride</Text>
         </TouchableOpacity>
       </View>
@@ -84,6 +195,7 @@ export default function Home() {
             <TouchableOpacity style={styles.modalButton} onPress={handleResumeRide}>
               <Text style={styles.modalButtonText}>Resume Ride</Text>
             </TouchableOpacity>
+            {/* Only "Finish Ride" option as requested */}
             <TouchableOpacity style={styles.modalButton} onPress={handleFinishRide}>
               <Text style={styles.modalButtonText}>Finish Ride</Text>
             </TouchableOpacity>
@@ -131,6 +243,10 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "600",
+  },
+  // Style for disabled button (grey)
+  disabledButton: {
+    backgroundColor: "#a0a0a0",
   },
   modalContainer: {
     flex: 1,

@@ -14,7 +14,7 @@ import {
 
 // 🔐 Your Ola Maps API Key
 const OLA_API_KEY = 'CornDpxoVHMISlbCN8ePrPdauyrHDeIBZotfvRdy';
-
+const BASE_URL = "http://192.168.71.213:5000";
 // Reusable autocomplete component that fetches suggestions via Ola API
 const OlaPlacesAutocomplete = ({
   placeholder,
@@ -208,7 +208,7 @@ const JoinRideScreen = () => {
 
   try {
     // 1. GET destination and stops using the ride code
-    const getResponse = await fetch(`http://192.168.149.213:5000/api/ride/${generatedCode}`);
+    const getResponse = await fetch(`${BASE_URL}/api/ride/${generatedCode}`);
     if (!getResponse.ok) {
       showAlert('Error', 'Invalid ride code or ride not found.');
       return;
@@ -232,7 +232,7 @@ const JoinRideScreen = () => {
         }
       : source; // fallback if already in correct format
 
-    const postResponse = await fetch('http://192.168.149.213:5000/api/info', {
+    const postResponse = await fetch(`${BASE_URL}/api/info`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

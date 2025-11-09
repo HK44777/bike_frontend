@@ -3,14 +3,14 @@ import PolylineDecoder from '@mapbox/polyline';
 import * as Location from 'expo-location';
 import { useEffect, useRef, useState } from 'react';
 import {
-    FlatList,
-    Keyboard,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  FlatList,
+  Keyboard,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import MapView, { AnimatedRegion, Marker, Polyline } from 'react-native-maps';
 
